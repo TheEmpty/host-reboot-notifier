@@ -8,13 +8,18 @@ use tokio::{
     time::{sleep, Duration},
 };
 
+fn singular_or_plural(singular_form: &str, num: i64) -> String {
+    let pluralize = if num == 1 { "" } else { "s" };
+    format!("{num} {singular_form}{pluralize}")
+}
+
 fn duration_string(dur: chrono::Duration) -> String {
     if dur.num_days() > 0 {
-        format!("{} days", dur.num_days())
+        singular_or_plural("day", dur.num_days())
     } else if dur.num_hours() > 0 {
-        format!("{} hours", dur.num_hours())
+        singular_or_plural("hour", dur.num_hours())
     } else {
-        format!("{} minutes", dur.num_minutes())
+        singular_or_plural("minute", dur.num_minutes())
     }
 }
 
