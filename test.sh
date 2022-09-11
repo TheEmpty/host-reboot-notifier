@@ -5,20 +5,14 @@ set -ex
 cargo fmt
 cargo clippy -- -D warnings
 cargo build --release
-cargo test --release
 
 USER="theempty"
 NAME="host-reboot-notifier"
-VERSION=$(sed -E -n 's/^version = "([0-9\.]+)"/\1/p' Cargo.toml)
 BUILDX="pensive_albattani"
 PLATFORMS="linux/amd64,linux/arm64"
 
-echo "Building for release, ${NAME}:${VERSION}"
-
 TAGS=(
 192.168.7.7:5000/${USER}/${NAME}
-${USER}/${NAME}:latest
-${USER}/${NAME}:${VERSION}
 )
 
 function join_tags {
@@ -31,9 +25,3 @@ docker buildx build --builder ${BUILDX} $(join_tags) --push --platform=${PLATFOR
 
 kubectl rollout restart daemonset/${NAME} || true
 kubectl exec -n registry $(kubectl get po -n registry -l app=registry -o=name) -- bin/registry garbage-collect /etc/docker/registry/config.yml || true
-
-if $(git diff --quiet) ; then
-  git push
-else
-  echo "Dirty git tree, please manually verify and push."
-fi

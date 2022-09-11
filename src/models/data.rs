@@ -35,12 +35,12 @@ impl Data {
         }
     }
 
-    pub(crate) fn first_uptime(&self) -> Option<&Uptime> {
-        self.uptimes.first()
+    pub(crate) fn uptime_len(&self) -> usize {
+        self.uptimes.len()
     }
 
-    pub(crate) fn delete_first_uptime(&mut self) {
-        self.uptimes.remove(0);
+    pub(crate) fn delete_first_uptime(&mut self) -> Uptime {
+        self.uptimes.remove(0)
     }
 
     pub(crate) fn create_new_uptime(&mut self) {

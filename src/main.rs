@@ -3,7 +3,10 @@ mod models;
 use chrono::Utc;
 use models::{Config, Data, Uptime};
 use prowl::Notification;
-use tokio::time::{sleep, Duration};
+use tokio::{
+    sync::mpsc,
+    time::{sleep, Duration},
+};
 
 fn duration_string(dur: chrono::Duration) -> String {
     if dur.num_days() > 0 {
@@ -15,7 +18,11 @@ fn duration_string(dur: chrono::Duration) -> String {
     }
 }
 
-async fn notify(config: &Config, uptime: &Uptime) {
+async fn queue_notification(
+    config: &Config,
+    uptime: &Uptime,
+    sender: &mpsc::UnboundedSender<Notification>,
+) {
     let hostname = match hostname::get() {
         Ok(x) => x.to_str().unwrap_or("Unknown").to_string(),
         Err(_) => "Unknown".to_string(),
@@ -37,10 +44,38 @@ async fn notify(config: &Config, uptime: &Uptime) {
         description,
     )
     .expect("Failed to create notification");
-    match notification.add().await {
-        Ok(_) => {}
-        Err(e) => log::error!("Failed to add notification due to {e}"),
-    };
+    log::debug!("Queueing notification {:?}", notification);
+    sender
+        .send(notification)
+        .expect("Failed to queue notification");
+}
+
+async fn send_notifications(mut reciever: mpsc::UnboundedReceiver<Notification>) {
+    log::debug!("Notifications channel processor started.");
+    while let Some(notification) = reciever.recv().await {
+        'notification: loop {
+            match notification.add().await {
+                Ok(_) => break 'notification,
+                Err(e) => {
+                    log::error!("Failed to send notification due to {:?}", e);
+                    sleep(Duration::from_secs(30)).await;
+                }
+            }
+        }
+    }
+    log::warn!("Notification channel has been closed.");
+}
+
+async fn queue_notifications(
+    config: &Config,
+    data: &mut Data,
+    sender: mpsc::UnboundedSender<Notification>,
+) {
+    while data.uptime_len() > 1 {
+        let uptime = data.delete_first_uptime();
+        queue_notification(config, &uptime, &sender).await;
+    }
+    drop(sender);
 }
 
 // data with 1 event = 62 bytes
@@ -51,14 +86,10 @@ async fn main() {
 
     let config = Config::load(std::env::args().nth(1));
     let mut data = Data::load_or_default(&config);
-    // TODO: background queue for the notifications incase of no internet.
-    // create_new_uptime, and while len > 1, notify?
-    if let Some(uptime) = data.first_uptime() {
-        notify(&config, uptime).await;
-        data.delete_first_uptime();
-    }
-
+    let (sender, reciever) = mpsc::unbounded_channel();
     data.create_new_uptime();
+    queue_notifications(&config, &mut data, sender).await;
+    tokio::spawn(send_notifications(reciever));
 
     loop {
         data.beat();
