@@ -52,7 +52,7 @@ async fn queue_notification(
     let reboot_time_string = duration_string(reboot_duration);
     let uptime_string = duration_string(uptime_duration);
     let event = format!("{hostname} restarted.");
-    let description = format!("{hostname} was rebooted. Took {reboot_time_string} to come back up. Previous uptime was {uptime_string}.");
+    let description = format!("{hostname} was rebooted. Took {reboot_time_string} to come back up. Host was previously up for {uptime_string}.");
     let notification = Notification::new(
         config.prowl_api_keys().to_owned(),
         None,
