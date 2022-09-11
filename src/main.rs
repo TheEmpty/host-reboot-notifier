@@ -8,6 +8,22 @@ use tokio::{
     time::{sleep, Duration},
 };
 
+fn hostname() -> String {
+    match std::env::var("HOST_REBOOT_NOTIFIER_HOSTNAME") {
+        Ok(val) => return val,
+        Err(e) => log::trace!("Couldn't get HOST_REBOOT_NOTIFIER_HOSTNAME env variable. {e}"),
+    };
+
+    match hostname::get() {
+        Ok(x) => return x.to_str().unwrap_or("Unknown").to_string(),
+        Err(e) => {
+            log::error!("Failed to get hostname: {e}");
+        }
+    };
+
+    "Unknown".to_string()
+}
+
 fn singular_or_plural(singular_form: &str, num: i64) -> String {
     let pluralize = if num == 1 { "" } else { "s" };
     format!("{num} {singular_form}{pluralize}")
@@ -28,10 +44,7 @@ async fn queue_notification(
     uptime: &Uptime,
     sender: &mpsc::UnboundedSender<Notification>,
 ) {
-    let hostname = match hostname::get() {
-        Ok(x) => x.to_str().unwrap_or("Unknown").to_string(),
-        Err(_) => "Unknown".to_string(),
-    };
+    let hostname = hostname();
     let uptime_duration = uptime
         .last_heartbeat()
         .signed_duration_since(*uptime.start());
