@@ -68,6 +68,18 @@ async fn queue_notification(
         .expect("Failed to queue notification");
 }
 
+async fn queue_notifications(
+    config: &Config,
+    data: &mut Data,
+    sender: mpsc::UnboundedSender<Notification>,
+) {
+    while data.uptime_len() > 1 {
+        let uptime = data.delete_first_uptime();
+        queue_notification(config, &uptime, &sender).await;
+    }
+    drop(sender);
+}
+
 async fn send_notifications(mut reciever: mpsc::UnboundedReceiver<Notification>) {
     log::debug!("Notifications channel processor started.");
     while let Some(notification) = reciever.recv().await {
@@ -82,18 +94,6 @@ async fn send_notifications(mut reciever: mpsc::UnboundedReceiver<Notification>)
         }
     }
     log::warn!("Notification channel has been closed.");
-}
-
-async fn queue_notifications(
-    config: &Config,
-    data: &mut Data,
-    sender: mpsc::UnboundedSender<Notification>,
-) {
-    while data.uptime_len() > 1 {
-        let uptime = data.delete_first_uptime();
-        queue_notification(config, &uptime, &sender).await;
-    }
-    drop(sender);
 }
 
 // data with 1 event = 62 bytes
