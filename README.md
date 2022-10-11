@@ -12,7 +12,7 @@ Media host was rebooted. Took 1 minute to come back up. Host was previously up f
 ```
   host-reboot-notifier:
     restart: unless-stopped
-    image: 192.168.7.7:5000/theempty/host-reboot-notifier:latest
+    image: theempty/host-reboot-notifier:latest
     container_name: host-reboot-notifier
     environment:
       - HOST_REBOOT_NOTIFIER_HOSTNAME=media-host
@@ -50,7 +50,7 @@ spec:
             path: /var/host-reboot-notifier
       containers:
       - name: host-reboot-notifier
-        image: 192.168.7.7:5000/theempty/host-reboot-notifier:latest
+        image: theempty/host-reboot-notifier:latest
         resources:
           limits:
             memory: "128Mi"

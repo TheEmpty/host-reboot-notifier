@@ -3,10 +3,8 @@ mod models;
 use chrono::Utc;
 use models::{Config, Data, Uptime};
 use prowl::Notification;
-use tokio::{
-    sync::mpsc,
-    time::{sleep, Duration},
-};
+use prowl_queue::{ProwlQueue, ProwlQueueSender};
+use tokio::time::{sleep, Duration};
 
 fn hostname() -> String {
     match std::env::var("HOST_REBOOT_NOTIFIER_HOSTNAME") {
@@ -39,11 +37,7 @@ fn duration_string(dur: chrono::Duration) -> String {
     }
 }
 
-async fn queue_notification(
-    config: &Config,
-    uptime: &Uptime,
-    sender: &mpsc::UnboundedSender<Notification>,
-) {
+fn queue_notification(config: &Config, uptime: &Uptime, prowl_queue: &ProwlQueueSender) {
     let hostname = hostname();
     let uptime_duration = uptime
         .last_heartbeat()
@@ -63,37 +57,16 @@ async fn queue_notification(
     )
     .expect("Failed to create notification");
     log::debug!("Queueing notification {:?}", notification);
-    sender
-        .send(notification)
+    prowl_queue
+        .add(notification)
         .expect("Failed to queue notification");
 }
 
-async fn queue_notifications(
-    config: &Config,
-    data: &mut Data,
-    sender: mpsc::UnboundedSender<Notification>,
-) {
+fn queue_notifications(config: &Config, data: &mut Data, prowl_queue: ProwlQueueSender) {
     while data.uptime_len() > 1 {
         let uptime = data.delete_first_uptime();
-        queue_notification(config, &uptime, &sender).await;
+        queue_notification(config, &uptime, &prowl_queue);
     }
-    drop(sender);
-}
-
-async fn send_notifications(mut reciever: mpsc::UnboundedReceiver<Notification>) {
-    log::debug!("Notifications channel processor started.");
-    while let Some(notification) = reciever.recv().await {
-        'notification: loop {
-            match notification.add().await {
-                Ok(_) => break 'notification,
-                Err(e) => {
-                    log::error!("Failed to send notification due to {:?}", e);
-                    sleep(Duration::from_secs(30)).await;
-                }
-            }
-        }
-    }
-    log::warn!("Notification channel has been closed.");
 }
 
 // data with 1 event = 62 bytes
@@ -104,10 +77,10 @@ async fn main() {
 
     let config = Config::load(std::env::args().nth(1));
     let mut data = Data::load_or_default(&config);
-    let (sender, reciever) = mpsc::unbounded_channel();
     data.create_new_uptime();
-    queue_notifications(&config, &mut data, sender).await;
-    tokio::spawn(send_notifications(reciever));
+    let (sender, reciever) = ProwlQueue::default().into_parts();
+    queue_notifications(&config, &mut data, sender);
+    tokio::spawn(reciever.async_loop());
 
     loop {
         data.beat();

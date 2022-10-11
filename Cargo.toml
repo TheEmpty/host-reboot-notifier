@@ -1,6 +1,6 @@
 [package]
 name = "host-reboot-notifier"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2021"
 authors = ["Myles Empty Best"]
 
@@ -8,6 +8,7 @@ authors = ["Myles Empty Best"]
 
 [dependencies]
 prowl = "0.2.5"
+prowl-queue = "0.1.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 tokio = { version = "1.20.1", features = ["full"] }

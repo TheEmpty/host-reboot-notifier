@@ -117,6 +117,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "derive-new"
+version = "0.5.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3418329ca0ad70234b9735dc4ceed10af4df60eff9c8e7b06cb5e520d92c3535"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "encoding_rs"
 version = "0.8.31"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -252,7 +263,7 @@ dependencies = [
 
 [[package]]
 name = "host-reboot-notifier"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "chrono",
  "derive-getters",
@@ -260,6 +271,7 @@ dependencies = [
  "hostname",
  "log",
  "prowl",
+ "prowl-queue",
  "serde",
  "serde_json",
  "tokio",
@@ -643,6 +655,20 @@ dependencies = [
  "reqwest",
  "thiserror",
  "urlencoding",
+]
+
+[[package]]
+name = "prowl-queue"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8c8cde64f3dc66dbd54df3d92c044c7a98752073f8f6a2af80759cee8cb8fb24"
+dependencies = [
+ "derive-getters",
+ "derive-new",
+ "log",
+ "prowl",
+ "thiserror",
+ "tokio",
 ]
 
 [[package]]
